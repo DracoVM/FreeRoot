@@ -1,44 +1,122 @@
 #!/bin/bash
 
-# Function to install an OS with proot
-install_os() {
-  local os_name="$1"
-  local repo="$2"
+ROOTFS_DIR="/home/runner" # Specify your desired rootfs location
+export PATH="$PATH:~/.local/usr/bin"
 
-  # Check if proot is installed
-  if ! command -v proot &> /dev/null; then
-    echo "Error: proot is not installed. Please install it first."
-    exit 1
-  fi
+# Check for proot
+if ! command -v proot &> /dev/null; then
+  echo "Error: proot is not installed. Please install it first."
+  exit 1
+fi
 
-  # Create a directory for the OS
-  mkdir -p "$HOME/.local/share/proot/rootfs/$os_name"
+# Check if proot is already installed
+if [ -e "$ROOTFS_DIR/.installed" ]; then
+  echo "Proot environment already setup!"
+  echo "Starting the environment..."
+  start_proot
+  exit 0
+fi
 
-  # Download and extract the OS
-  echo "Downloading and extracting $os_name..."
-  wget -nv "$repo" -O "$HOME/.local/share/proot/rootfs/$os_name/os.tar.gz"
-  tar -xzf "$HOME/.local/share/proot/rootfs/$os_name/os.tar.gz" -C "$HOME/.local/share/proot/rootfs/$os_name"
+# Choose OS
+echo "Choose OS:"
+echo "1) Debian"
+echo "2) Ubuntu (RDP Support)"
+echo "3) Alpine"
+read -p "Enter OS (1-3): " input
 
-  # Run proot
-  echo "Starting $os_name..."
-  proot -r "$HOME/.local/share/proot/rootfs/$os_name" /bin/bash
-}
-
-# Prompt for OS name
-read -p "Enter the name of the OS you want to install (e.g., ubuntu, debian): " os_name
-
-# Check if the OS name is valid (add more options as needed)
-case "$os_name" in
-  ubuntu)
-    repo="https://releases.ubuntu.com/22.04/ubuntu-22.04.1-desktop-amd64.iso"
-    install_os "$os_name" "$repo"
+case $input in
+  1)
+    download_os "Debian" "https://github.com/termux/proot-distro/releases/download/v3.10.0/debian-$(uname -m)-pd-v3.10.0.tar.xz"
+    install_debian
     ;;
-  debian)
-    repo="https://www.debian.org/CD/http/debian-cd/current/amd64/iso-cd/debian-11.6.0-amd64-netinst.iso"
-    install_os "$os_name" "$repo"
+  2)
+    download_os "Ubuntu" "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-$(get_arch).tar.gz"
+    install_ubuntu
+    ;;
+  3)
+    download_os "Alpine" "https://dl-cdn.alpinelinux.org/alpine/v3.18/releases/x86_64/alpine-minirootfs-3.18.3-$(uname -m).tar.gz"
+    install_alpine
     ;;
   *)
-    echo "Invalid OS name."
+    echo "Invalid selection. Exiting."
     exit 1
     ;;
 esac
+
+# Install proot
+install_proot
+
+# Setup networking
+setup_networking
+
+# Start proot
+start_proot
+
+
+# Download OS
+download_os() {
+  local os_name="$1"
+  local repo="$2"
+
+  echo "Downloading $os_name..."
+  wget --tries=50 --timeout=1 --no-hsts -O "/tmp/rootfs.tar.xz" "$repo"
+}
+
+# Install Debian
+install_debian() {
+  echo "Installing Debian..."
+  tar -xJf /tmp/rootfs.tar.xz -C "$ROOTFS_DIR"
+  # Install necessary packages (if needed)
+  # ...
+}
+
+# Install Ubuntu
+install_ubuntu() {
+  echo "Installing Ubuntu..."
+  tar -xf /tmp/rootfs.tar.gz -C "$ROOTFS_DIR"
+  # Install necessary packages (if needed)
+  # ...
+}
+
+# Install Alpine
+install_alpine() {
+  echo "Installing Alpine..."
+  tar -xf /tmp/rootfs.tar.gz -C "$ROOTFS_DIR"
+  # Install necessary packages (if needed)
+  # ...
+}
+
+# Install proot
+install_proot() {
+  echo "Installing proot..."
+  mkdir -p "$ROOTFS_DIR/usr/local/bin"
+  wget --tries=50 --timeout=1 --no-hsts -O "$ROOTFS_DIR/usr/local/bin/proot" "https://raw.githubusercontent.com/dxomg/vpsfreepterovm/main/proot-$(uname -m)"
+  chmod +x "$ROOTFS_DIR/usr/local/bin/proot"
+  touch "$ROOTFS_DIR/.installed"
+}
+
+# Setup Networking
+setup_networking() {
+  echo "Setting up networking..."
+  printf "nameserver 1.1.1.1\nnameserver 1.0.0.1" > ${ROOTFS_DIR}/etc/resolv.conf
+  rm -rf /tmp/rootfs.tar.xz /tmp/sbin
+}
+
+# Start proot
+start_proot() {
+  echo "Starting the environment..."
+  "$ROOTFS_DIR/usr/local/bin/proot" \
+    --rootfs="$ROOTFS_DIR" \
+    -0 -w "/root" -b /dev -b /sys -b /proc -b /etc/resolv.conf --kill-on-exit
+}
+
+# Get architecture
+get_arch() {
+  case $(uname -m) in
+    x86_64) echo amd64 ;;
+    aarch64) echo arm64 ;;
+    *) echo "Unsupported architecture"
+       exit 1
+       ;;
+  esac
+}
