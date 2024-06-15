@@ -115,11 +115,11 @@ case $input in
     ;;
 esac
 
-# Install proot
-install_proot
-
-# Setup networking
-setup_networking
+# Install proot if not already installed
+if [ ! -e "$ROOTFS_DIR/.installed" ]; then
+  install_proot
+  setup_networking
+fi
 
 # Start proot
 start_proot
