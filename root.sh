@@ -3,55 +3,7 @@
 ROOTFS_DIR="/home/runner" # Specify your desired rootfs location
 export PATH="$PATH:~/.local/usr/bin"
 
-# Check for proot
-if ! command -v proot &> /dev/null; then
-  echo "Error: proot is not installed. Please install it first."
-  exit 1
-fi
-
-# Check if proot is already installed
-if [ -e "$ROOTFS_DIR/.installed" ]; then
-  echo "Proot environment already setup!"
-  echo "Starting the environment..."
-  start_proot
-  exit 0
-fi
-
-# Choose OS
-echo "Choose OS:"
-echo "1) Debian"
-echo "2) Ubuntu (RDP Support)"
-echo "3) Alpine"
-read -p "Enter OS (1-3): " input
-
-case $input in
-  1)
-    download_os "Debian" "https://github.com/termux/proot-distro/releases/download/v3.10.0/debian-$(uname -m)-pd-v3.10.0.tar.xz"
-    install_debian
-    ;;
-  2)
-    download_os "Ubuntu" "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-$(get_arch).tar.gz"
-    install_ubuntu
-    ;;
-  3)
-    download_os "Alpine" "https://dl-cdn.alpinelinux.org/alpine/v3.18/releases/x86_64/alpine-minirootfs-3.18.3-$(uname -m).tar.gz"
-    install_alpine
-    ;;
-  *)
-    echo "Invalid selection. Exiting."
-    exit 1
-    ;;
-esac
-
-# Install proot
-install_proot
-
-# Setup networking
-setup_networking
-
-# Start proot
-start_proot
-
+# --- Function Definitions ---
 
 # Download OS
 download_os() {
@@ -120,3 +72,54 @@ get_arch() {
        ;;
   esac
 }
+
+# --- Main Script ---
+
+# Check for proot
+if ! command -v proot &> /dev/null; then
+  echo "Error: proot is not installed. Please install it first."
+  exit 1
+fi
+
+# Check if proot is already installed
+if [ -e "$ROOTFS_DIR/.installed" ]; then
+  echo "Proot environment already setup!"
+  echo "Starting the environment..."
+  start_proot
+  exit 0
+fi
+
+# Choose OS
+echo "Choose OS:"
+echo "1) Debian"
+echo "2) Ubuntu (RDP Support)"
+echo "3) Alpine"
+read -p "Enter OS (1-3): " input
+
+case $input in
+  1)
+    download_os "Debian" "https://github.com/termux/proot-distro/releases/download/v3.10.0/debian-$(uname -m)-pd-v3.10.0.tar.xz"
+    install_debian
+    ;;
+  2)
+    download_os "Ubuntu" "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-$(get_arch).tar.gz"
+    install_ubuntu
+    ;;
+  3)
+    download_os "Alpine" "https://dl-cdn.alpinelinux.org/alpine/v3.18/releases/x86_64/alpine-minirootfs-3.18.3-$(uname -m).tar.gz"
+    install_alpine
+    ;;
+  *)
+    echo "Invalid selection. Exiting."
+    exit 1
+    ;;
+esac
+
+# Install proot
+install_proot
+
+# Setup networking
+setup_networking
+
+# Start proot
+start_proot
